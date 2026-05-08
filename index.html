@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supply Chain Scenario Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0d0d;
+      --surface:   #141414;
+      --surface2:  #1a1a1a;
+      --border:    #272727;
+      --gold:      #E8A020;
+      --gold-dim:  #b07c18;
+      --gold-bg:   rgba(232, 160, 32, 0.08);
+      --green:     #22c55e;
+      --green-bg:  rgba(34, 197, 94, 0.08);
+      --amber:     #f59e0b;
+      --amber-bg:  rgba(245, 158, 11, 0.08);
+      --red:       #ef4444;
+      --red-bg:    rgba(239, 68, 68, 0.08);
+      --muted:     #6b7280;
+      --text:      #e5e5e5;
+      --text-dim:  #a3a3a3;
+      --mono:      'IBM Plex Mono', monospace;
+      --sans:      'Inter', system-ui, sans-serif;
+      --radius:    8px;
+      --radius-lg: 12px;
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Layout Shell ── */
+    .shell {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 28px 0 24px;
+      margin-bottom: 36px;
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .header-wordmark {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .header-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--gold-bg);
+      border: 1px solid var(--gold-dim);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .header-icon svg { width: 20px; height: 20px; stroke: var(--gold); fill: none; stroke-width: 1.8; }
+
+    .header-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .header-sub {
+      font-size: 0.78rem;
+      font-weight: 400;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .header-badge {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      padding: 4px 10px;
+      background: var(--gold-bg);
+      border: 1px solid var(--gold-dim);
+      border-radius: 4px;
+      color: var(--gold);
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    /* ── Section Label ── */
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── KPI Cards ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--gold);
+      opacity: 0.5;
+    }
+
+    .kpi-label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .kpi-value {
+      font-family: var(--mono);
+      font-size: 1.9rem;
+      font-weight: 600;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .kpi-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    /* ── Scenario Controls ── */
+    .controls-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px 28px;
+      margin-bottom: 36px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 32px;
+      align-items: end;
+    }
+
+    .control-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .slider-row input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .slider-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--gold);
+      border: 2px solid var(--bg);
+      cursor: pointer;
+      box-shadow: 0 0 0 2px rgba(232, 160, 32, 0.3);
+      transition: box-shadow 0.15s;
+    }
+
+    .slider-row input[type="range"]::-webkit-slider-thumb:hover {
+      box-shadow: 0 0 0 4px rgba(232, 160, 32, 0.2);
+    }
+
+    .slider-row input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--gold);
+      border: 2px solid var(--bg);
+      cursor: pointer;
+    }
+
+    .slider-value {
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--gold);
+      min-width: 48px;
+      text-align: right;
+    }
+
+    /* Toggle */
+    .toggle-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .toggle-wrapper label.toggle-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .toggle-switch input:checked + .toggle-track {
+      background: rgba(239, 68, 68, 0.25);
+      border: 1px solid var(--red);
+    }
+
+    .toggle-switch input:checked + .toggle-track::after {
+      transform: translateX(20px);
+      background: var(--red);
+    }
+
+    .toggle-status {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color 0.2s;
+    }
+
+    .toggle-status.active { color: var(--red); }
+
+    .disruption-note {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    /* ── Table ── */
+    .table-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 36px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    thead {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    thead th {
+      padding: 13px 16px;
+      text-align: left;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    thead th:not(:first-child) { text-align: right; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+
+    tbody tr.row-ok:hover    { background: rgba(34, 197, 94, 0.04); }
+    tbody tr.row-warn:hover  { background: rgba(245, 158, 11, 0.06); }
+    tbody tr.row-crit:hover  { background: rgba(239, 68, 68, 0.06); }
+
+    tbody tr.row-crit { border-left: 3px solid var(--red); }
+    tbody tr.row-warn { border-left: 3px solid var(--amber); }
+    tbody tr.row-ok   { border-left: 3px solid var(--green); }
+
+    td {
+      padding: 13px 16px;
+      vertical-align: middle;
+    }
+
+    td:not(:first-child) {
+      text-align: right;
+      font-family: var(--mono);
+    }
+
+    .cat-name {
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .status-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-ok   { background: var(--green-bg);  color: var(--green);  border: 1px solid rgba(34, 197, 94, 0.25); }
+    .badge-warn { background: var(--amber-bg);  color: var(--amber);  border: 1px solid rgba(245, 158, 11, 0.25); }
+    .badge-crit { background: var(--red-bg);    color: var(--red);    border: 1px solid rgba(239, 68, 68, 0.25); }
+
+    .num-ok   { color: var(--green); }
+    .num-warn { color: var(--amber); }
+    .num-crit { color: var(--red); }
+
+    /* ── Chart ── */
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px 28px;
+      margin-bottom: 36px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .chart-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 20px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 320px;
+    }
+
+    /* ── EOQ Panel ── */
+    .eoq-section { margin-bottom: 36px; }
+
+    .eoq-header {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eoq-title { font-size: 0.9rem; font-weight: 600; }
+
+    .eoq-formula {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .eoq-formula span { color: var(--gold); }
+
+    .eoq-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .eoq-item {
+      padding: 18px 20px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eoq-item:nth-child(4n) { border-right: none; }
+    .eoq-item:nth-last-child(-n+4) { border-bottom: none; }
+
+    .eoq-item-name {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .eoq-item-value {
+      font-family: var(--mono);
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--gold);
+    }
+
+    .eoq-item-sub {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .eoq-item-meta {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px 0 32px;
+      margin-top: 8px;
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .footer-note {
+      font-size: 0.72rem;
+      color: var(--muted);
+      max-width: 480px;
+    }
+
+    .footer-note strong { color: var(--text-dim); font-weight: 500; }
+
+    .footer-credit {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .footer-credit a {
+      color: var(--gold);
+      text-decoration: none;
+    }
+
+    .footer-credit a:hover { text-decoration: underline; }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+      .kpi-grid       { grid-template-columns: repeat(2, 1fr); }
+      .eoq-grid       { grid-template-columns: repeat(2, 1fr); }
+      .eoq-item:nth-child(4n)  { border-right: 1px solid var(--border); }
+      .eoq-item:nth-child(2n)  { border-right: none; }
+      .eoq-item:nth-last-child(-n+4) { border-bottom: 1px solid var(--border); }
+      .eoq-item:nth-last-child(-n+2) { border-bottom: none; }
+    }
+
+    @media (max-width: 768px) {
+      .controls-grid  { grid-template-columns: 1fr; }
+      .table-wrapper  { overflow-x: auto; }
+      table           { min-width: 640px; }
+      .chart-container { height: 240px; }
+      .header-inner   { flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (max-width: 480px) {
+      .kpi-grid  { grid-template-columns: 1fr 1fr; }
+      .kpi-value { font-size: 1.4rem; }
+      .shell     { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- ── Header ── -->
+    <header>
+      <div class="header-inner">
+        <div class="header-wordmark">
+          <div class="header-icon">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1" y="3" width="15" height="13" rx="1"/>
+              <path d="M16 8h4l3 3v5h-7V8z"/>
+              <circle cx="5.5" cy="18.5" r="2.5"/>
+              <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="header-title">Supply Chain Scenario Planner</div>
+            <div class="header-sub">Diplomatic Mission Logistics Simulation</div>
+          </div>
+        </div>
+        <div class="header-badge">SYNTHETIC DATA ONLY</div>
+      </div>
+    </header>
+
+    <!-- ── KPI Row ── -->
+    <div class="section-label">Key Performance Indicators</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total SKUs</div>
+        <div class="kpi-value" id="kpi-skus">8</div>
+        <div class="kpi-meta">Supply categories tracked</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Below Reorder Point</div>
+        <div class="kpi-value" id="kpi-below">--</div>
+        <div class="kpi-meta">Categories requiring action</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Inventory Value</div>
+        <div class="kpi-value" id="kpi-value">--</div>
+        <div class="kpi-meta">At current stock levels</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avg Lead Time</div>
+        <div class="kpi-value" id="kpi-leadtime">--</div>
+        <div class="kpi-meta">Days (base, no delay)</div>
+      </div>
+    </div>
+
+    <!-- ── Scenario Controls ── -->
+    <div class="section-label">Scenario Controls</div>
+    <div class="controls-card">
+      <div class="controls-grid">
+
+        <div class="control-group">
+          <label for="slider-demand">Demand Spike Multiplier</label>
+          <div class="slider-row">
+            <input
+              type="range"
+              id="slider-demand"
+              min="1" max="3" step="0.1"
+              value="1"
+              aria-label="Demand spike multiplier"
+            />
+            <span class="slider-value" id="demand-val">1.0x</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label for="slider-lead">Lead Time Delay (extra days)</label>
+          <div class="slider-row">
+            <input
+              type="range"
+              id="slider-lead"
+              min="0" max="14" step="1"
+              value="0"
+              aria-label="Lead time delay in days"
+            />
+            <span class="slider-value" id="lead-val">+0 days</span>
+          </div>
+        </div>
+
+        <div class="control-group toggle-wrapper">
+          <label class="toggle-label" for="toggle-disruption">Supply Disruption</label>
+          <div class="toggle-row">
+            <label class="toggle-switch" aria-label="Supply disruption toggle">
+              <input type="checkbox" id="toggle-disruption" />
+              <span class="toggle-track"></span>
+            </label>
+            <span class="toggle-status" id="disruption-status">OFF</span>
+          </div>
+          <div class="disruption-note">Cuts order quantities by 40%</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Inventory Status Table ── -->
+    <div class="section-label">Inventory Status</div>
+    <div class="table-wrapper">
+      <table id="inv-table" aria-label="Inventory status by category">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Stock (units)</th>
+            <th>Reorder Point</th>
+            <th>Days Until Stockout</th>
+            <th>Eff. Lead Time</th>
+            <th>Status</th>
+            <th>EOQ (units)</th>
+          </tr>
+        </thead>
+        <tbody id="inv-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- ── Chart ── -->
+    <div class="section-label">Stock vs. Reorder Point</div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Current Stock Level against Reorder Threshold</div>
+        <div class="chart-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#E8A020;"></div>
+            Current Stock
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#374151;border:1px solid #6b7280;"></div>
+            Reorder Point
+          </div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="stockChart" aria-label="Bar chart of stock vs reorder point"></canvas>
+      </div>
+    </div>
+
+    <!-- ── EOQ Analysis ── -->
+    <div class="section-label">EOQ Analysis</div>
+    <div class="eoq-section">
+      <div class="eoq-header">
+        <div class="eoq-title">Economic Order Quantity per Category</div>
+        <div class="eoq-formula">
+          EOQ = sqrt( 2 * <span>D</span> * <span>S</span> / <span>H</span> )
+          &nbsp;&mdash;&nbsp;
+          <span>D</span> = annual demand &nbsp;
+          <span>S</span> = $50 ordering cost &nbsp;
+          <span>H</span> = 20% of unit cost (annual holding cost)
+        </div>
+      </div>
+      <div class="eoq-grid" id="eoq-grid"></div>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer>
+      <div class="footer-inner">
+        <div class="footer-note">
+          <strong>Disclaimer:</strong> Synthetic data only — no real operational information is
+          contained in this tool. All figures are illustrative and represent a fictional
+          diplomatic mission scenario for educational and portfolio purposes.
+        </div>
+        <div class="footer-credit">
+          Built by Akshay Kumar<br />
+          <a href="https://akbknight.github.io" target="_blank" rel="noopener noreferrer">akbknight.github.io</a>
+        </div>
+      </div>
+    </footer>
+
+  </div><!-- /shell -->
+
+  <script>
+  (() => {
+    'use strict';
+
+    /* ─── Base Data ─────────────────────────────────────────────────────── */
+    const BASE_DATA = [
+      { name: "Office Supplies",    stock: 450,  reorderPoint: 120,  leadTimeDays: 7,   dailyDemand: 18,   unitCost: 12,    orderQty: 300 },
+      { name: "IT Equipment",       stock: 28,   reorderPoint: 10,   leadTimeDays: 21,  dailyDemand: 1.2,  unitCost: 850,   orderQty: 20  },
+      { name: "Security Gear",      stock: 95,   reorderPoint: 30,   leadTimeDays: 14,  dailyDemand: 2.8,  unitCost: 220,   orderQty: 60  },
+      { name: "Medical Supplies",   stock: 210,  reorderPoint: 75,   leadTimeDays: 10,  dailyDemand: 6.5,  unitCost: 45,    orderQty: 150 },
+      { name: "Communication Equip",stock: 15,   reorderPoint: 8,    leadTimeDays: 28,  dailyDemand: 0.4,  unitCost: 1200,  orderQty: 12  },
+      { name: "Vehicle Parts",      stock: 72,   reorderPoint: 25,   leadTimeDays: 18,  dailyDemand: 2.1,  unitCost: 380,   orderQty: 50  },
+      { name: "Stationery/Forms",   stock: 890,  reorderPoint: 200,  leadTimeDays: 5,   dailyDemand: 32,   unitCost: 3,     orderQty: 600 },
+      { name: "Facility Supplies",  stock: 340,  reorderPoint: 100,  leadTimeDays: 8,   dailyDemand: 11,   unitCost: 28,    orderQty: 250 }
+    ];
+
+    const ORDERING_COST  = 50;    // $ per order (fixed)
+    const HOLDING_RATE   = 0.20;  // 20% of unit cost per year
+
+    /* ─── EOQ Computation ──────────────────────────────────────────────── */
+    function computeEOQ(item) {
+      const annualDemand  = item.dailyDemand * 365;
+      const holdingCost   = item.unitCost * HOLDING_RATE;
+      return Math.round(Math.sqrt((2 * annualDemand * ORDERING_COST) / holdingCost));
+    }
+
+    /* Pre-compute static EOQ values (do not change with scenario) */
+    const EOQ_VALUES = BASE_DATA.map(computeEOQ);
+
+    /* ─── Scenario State ───────────────────────────────────────────────── */
+    let demandMult    = 1.0;
+    let leadTimeExtra = 0;
+    let disruption    = false;
+
+    /* ─── Derived Computations ─────────────────────────────────────────── */
+    function computeScenario() {
+      return BASE_DATA.map((item, i) => {
+        const effectiveDemand   = item.dailyDemand * demandMult;
+        const effectiveLeadTime = item.leadTimeDays + leadTimeExtra;
+        const effectiveOrderQty = disruption ? Math.round(item.orderQty * 0.6) : item.orderQty;
+
+        const daysUntilStockout = effectiveDemand > 0
+          ? item.stock / effectiveDemand
+          : Infinity;
+
+        let statusKey;
+        if (daysUntilStockout < effectiveLeadTime) {
+          statusKey = 'CRITICAL';
+        } else if (daysUntilStockout < effectiveLeadTime * 1.5) {
+          statusKey = 'WARNING';
+        } else {
+          statusKey = 'OK';
+        }
+
+        return {
+          ...item,
+          effectiveDemand,
+          effectiveLeadTime,
+          effectiveOrderQty,
+          daysUntilStockout,
+          statusKey,
+          eoq: EOQ_VALUES[i]
+        };
+      });
+    }
+
+    /* ─── Formatting Helpers ───────────────────────────────────────────── */
+    function fmtDays(val) {
+      if (!isFinite(val)) return '> 999';
+      return val.toFixed(1);
+    }
+
+    function fmtMoney(val) {
+      if (val >= 1_000_000) return '$' + (val / 1_000_000).toFixed(2) + 'M';
+      if (val >= 1_000)     return '$' + Math.round(val / 1_000) + 'K';
+      return '$' + Math.round(val);
+    }
+
+    /* XSS-safe text node creation */
+    function txt(str) { return document.createTextNode(String(str)); }
+
+    function el(tag, attrs, ...children) {
+      const node = document.createElement(tag);
+      if (attrs) {
+        Object.entries(attrs).forEach(([k, v]) => {
+          if (k === 'className') node.className = v;
+          else node.setAttribute(k, v);
+        });
+      }
+      children.forEach(c => {
+        if (typeof c === 'string' || typeof c === 'number') node.appendChild(txt(c));
+        else if (c) node.appendChild(c);
+      });
+      return node;
+    }
+
+    /* ─── KPI Cards ────────────────────────────────────────────────────── */
+    function updateKPIs(rows) {
+      const belowReorder   = rows.filter(r => r.stock < r.reorderPoint).length;
+      const totalValue     = BASE_DATA.reduce((sum, r) => sum + r.stock * r.unitCost, 0);
+      const avgLeadTime    = (BASE_DATA.reduce((s, r) => s + r.leadTimeDays, 0) / BASE_DATA.length).toFixed(1);
+
+      document.getElementById('kpi-below').textContent    = belowReorder;
+      document.getElementById('kpi-value').textContent    = fmtMoney(totalValue);
+      document.getElementById('kpi-leadtime').textContent = avgLeadTime;
+    }
+
+    /* ─── Table ────────────────────────────────────────────────────────── */
+    function updateTable(rows) {
+      const tbody = document.getElementById('inv-tbody');
+      tbody.replaceChildren(); // clears safely
+
+      rows.forEach(row => {
+        const rowClass = row.statusKey === 'CRITICAL' ? 'row-crit'
+                       : row.statusKey === 'WARNING'  ? 'row-warn' : 'row-ok';
+
+        const badgeClass = row.statusKey === 'CRITICAL' ? 'badge-crit'
+                         : row.statusKey === 'WARNING'  ? 'badge-warn' : 'badge-ok';
+
+        const numClass = row.statusKey === 'CRITICAL' ? 'num-crit'
+                       : row.statusKey === 'WARNING'  ? 'num-warn'  : 'num-ok';
+
+        const tr = el('tr', { className: rowClass },
+          el('td', null, el('span', { className: 'cat-name' }, row.name)),
+          el('td', null, row.stock.toLocaleString()),
+          el('td', null, row.reorderPoint.toLocaleString()),
+          el('td', { className: numClass }, fmtDays(row.daysUntilStockout)),
+          el('td', null, row.effectiveLeadTime + ' days'),
+          el('td', null, el('span', { className: 'status-badge ' + badgeClass }, row.statusKey)),
+          el('td', null, row.eoq.toLocaleString())
+        );
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* ─── Chart ────────────────────────────────────────────────────────── */
+    const CHART_COLORS = {
+      stockOk:   'rgba(232, 160, 32, 0.85)',
+      stockWarn: 'rgba(245, 158, 11, 0.85)',
+      stockCrit: 'rgba(239, 68, 68, 0.75)',
+      reorder:   'rgba(55, 65, 81, 0.70)',
+      border:    'rgba(39, 39, 39, 1)'
+    };
+
+    const chartCtx = document.getElementById('stockChart').getContext('2d');
+
+    const stockChart = new Chart(chartCtx, {
+      type: 'bar',
+      data: {
+        labels: BASE_DATA.map(d => d.name.length > 14 ? d.name.slice(0, 13) + '…' : d.name),
+        datasets: [
+          {
+            label: 'Current Stock',
+            data: BASE_DATA.map(d => d.stock),
+            backgroundColor: CHART_COLORS.stockOk,
+            borderColor: 'transparent',
+            borderRadius: 4,
+            barPercentage: 0.55,
+            categoryPercentage: 0.8
+          },
+          {
+            label: 'Reorder Point',
+            data: BASE_DATA.map(d => d.reorderPoint),
+            backgroundColor: CHART_COLORS.reorder,
+            borderColor: '#6b7280',
+            borderWidth: 1,
+            borderRadius: 4,
+            barPercentage: 0.55,
+            categoryPercentage: 0.8
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1a1a',
+            borderColor: '#272727',
+            borderWidth: 1,
+            titleColor: '#e5e5e5',
+            bodyColor: '#a3a3a3',
+            titleFont: { family: 'IBM Plex Mono', size: 12 },
+            bodyFont:  { family: 'IBM Plex Mono', size: 11 },
+            padding: 12,
+            callbacks: {
+              title: items => BASE_DATA[items[0].dataIndex].name,
+              label: item => ' ' + item.dataset.label + ': ' + item.raw.toLocaleString() + ' units'
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid:  { color: '#1f1f1f', drawBorder: false },
+            ticks: { color: '#6b7280', font: { family: 'IBM Plex Mono', size: 10 } }
+          },
+          y: {
+            grid:  { color: '#1f1f1f', drawBorder: false },
+            ticks: { color: '#6b7280', font: { family: 'IBM Plex Mono', size: 10 },
+                     callback: v => v.toLocaleString() }
+          }
+        }
+      }
+    });
+
+    function updateChart(rows) {
+      stockChart.data.datasets[0].data = rows.map(r => r.stock);
+
+      // Color bars by status
+      stockChart.data.datasets[0].backgroundColor = rows.map(r =>
+        r.statusKey === 'CRITICAL' ? CHART_COLORS.stockCrit :
+        r.statusKey === 'WARNING'  ? CHART_COLORS.stockWarn :
+                                     CHART_COLORS.stockOk
+      );
+
+      stockChart.update('none');
+    }
+
+    /* ─── EOQ Grid ─────────────────────────────────────────────────────── */
+    function buildEOQGrid() {
+      const grid = document.getElementById('eoq-grid');
+      grid.replaceChildren();
+
+      BASE_DATA.forEach((item, i) => {
+        const annualDemand = (item.dailyDemand * 365).toFixed(0);
+        const holdingCost  = (item.unitCost * HOLDING_RATE).toFixed(2);
+
+        const cell = el('div', { className: 'eoq-item' },
+          el('div', { className: 'eoq-item-name' }, item.name),
+          el('div', { className: 'eoq-item-value' }, EOQ_VALUES[i].toLocaleString() + ' units'),
+          el('div', { className: 'eoq-item-sub' }, 'Economic Order Quantity'),
+          el('div', { className: 'eoq-item-meta' },
+            'D=' + Number(annualDemand).toLocaleString() + '/yr  S=$' + ORDERING_COST + '  H=$' + holdingCost + '/unit/yr'
+          )
+        );
+        grid.appendChild(cell);
+      });
+    }
+
+    /* ─── Full Render ──────────────────────────────────────────────────── */
+    function render() {
+      const rows = computeScenario();
+      updateKPIs(rows);
+      updateTable(rows);
+      updateChart(rows);
+    }
+
+    /* ─── Control Wire-up ──────────────────────────────────────────────── */
+    const sliderDemand  = document.getElementById('slider-demand');
+    const sliderLead    = document.getElementById('slider-lead');
+    const toggleDisrupt = document.getElementById('toggle-disruption');
+    const demandValEl   = document.getElementById('demand-val');
+    const leadValEl     = document.getElementById('lead-val');
+    const disruptStatus = document.getElementById('disruption-status');
+
+    sliderDemand.addEventListener('input', () => {
+      demandMult = parseFloat(sliderDemand.value);
+      demandValEl.textContent = demandMult.toFixed(1) + 'x';
+      render();
+    });
+
+    sliderLead.addEventListener('input', () => {
+      leadTimeExtra = parseInt(sliderLead.value, 10);
+      leadValEl.textContent = '+' + leadTimeExtra + ' day' + (leadTimeExtra === 1 ? '' : 's');
+      render();
+    });
+
+    toggleDisrupt.addEventListener('change', () => {
+      disruption = toggleDisrupt.checked;
+      disruptStatus.textContent = disruption ? 'ON' : 'OFF';
+      disruptStatus.classList.toggle('active', disruption);
+      render();
+    });
+
+    /* ─── Init ─────────────────────────────────────────────────────────── */
+    buildEOQGrid();
+    render();
+
+  })();
+  </script>
+</body>
+</html>
