@@ -15,27 +15,78 @@
     /* ── Reset & Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --bg:        #0d0d0d;
-      --surface:   #141414;
-      --surface2:  #1a1a1a;
-      --border:    #272727;
-      --gold:      #E8A020;
-      --gold-dim:  #b07c18;
-      --gold-bg:   rgba(232, 160, 32, 0.08);
-      --green:     #22c55e;
-      --green-bg:  rgba(34, 197, 94, 0.08);
+    :root, [data-theme="dark"] {
+      --bg:        #090d16;
+      --surface:   #0f172a;
+      --surface2:  #1e293b;
+      --border:    rgba(255, 255, 255, 0.08);
+      --gold:      #f59e0b;
+      --gold-dim:  #b45309;
+      --gold-bg:   rgba(245, 158, 11, 0.10);
+      --green:     #10b981;
+      --green-bg:  rgba(16, 185, 129, 0.10);
       --amber:     #f59e0b;
-      --amber-bg:  rgba(245, 158, 11, 0.08);
-      --red:       #ef4444;
-      --red-bg:    rgba(239, 68, 68, 0.08);
-      --muted:     #6b7280;
-      --text:      #e5e5e5;
-      --text-dim:  #a3a3a3;
+      --amber-bg:  rgba(245, 158, 11, 0.10);
+      --red:       #f43f5e;
+      --red-bg:    rgba(244, 63, 94, 0.10);
+      --muted:     #64748b;
+      --text:      #f8fafc;
+      --text-dim:  #94a3b8;
       --mono:      'IBM Plex Mono', monospace;
       --sans:      'Inter', system-ui, sans-serif;
       --radius:    8px;
       --radius-lg: 12px;
+    }
+
+    [data-theme="light"] {
+      --bg:        #f8fafc;
+      --surface:   #ffffff;
+      --surface2:  #f1f5f9;
+      --border:    #e2e8f0;
+      --gold:      #d97706;
+      --gold-dim:  #b45309;
+      --gold-bg:   rgba(217, 119, 6, 0.08);
+      --green:     #16a34a;
+      --green-bg:  rgba(22, 163, 74, 0.08);
+      --amber:     #d97706;
+      --amber-bg:  rgba(217, 119, 6, 0.08);
+      --red:       #dc2626;
+      --red-bg:    rgba(220, 38, 38, 0.08);
+      --muted:     #64748b;
+      --text:      #0f172a;
+      --text-dim:  #475569;
+      --mono:      'IBM Plex Mono', monospace;
+      --sans:      'Inter', system-ui, sans-serif;
+      --radius:    8px;
+      --radius-lg: 12px;
+    }
+
+    .kpi-num, td, th, input[type="range"] + span {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+    }
+    .panel, .card, table {
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+      border: 1px solid var(--border) !important;
+    }
+    .theme-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 0.35rem 0.85rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .theme-toggle-btn:hover {
+      border-color: var(--gold);
+      color: var(--gold);
     }
 
     html { font-size: 16px; scroll-behavior: smooth; }
@@ -613,6 +664,14 @@
     <!-- ── Header ── -->
     <header>
       <div class="header-inner">
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 12px;">
+        <a href="https://akbknight.github.io/" style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-dim); text-decoration: none; font-family: var(--mono); font-size: 0.75rem; font-weight: 500;">
+          <span>&larr;</span> Portfolio Hub
+        </a>
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle light and dark mode">
+          <span id="themeLabel">Light</span>
+        </button>
+      </div>
         <div class="header-wordmark">
           <div class="header-icon">
             <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
@@ -1060,5 +1119,36 @@
 
   })();
   </script>
+<script>
+  function initTheme() {
+    const saved = localStorage.getItem('ak_theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = saved ? saved : (prefersDark ? 'dark' : 'light');
+    applyTheme(theme);
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ak_theme', theme);
+    const label = document.getElementById('themeLabel');
+    if (label) label.textContent = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+    if (window.chart) {
+      const isDark = theme === 'dark';
+      window.chart.options.scales.x.grid.color = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      window.chart.options.scales.y.grid.color = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      window.chart.options.scales.x.ticks.color = isDark ? '#94a3b8' : '#475569';
+      window.chart.options.scales.y.ticks.color = isDark ? '#94a3b8' : '#475569';
+      window.chart.update();
+    }
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+  }
+
+  window.addEventListener('DOMContentLoaded', initTheme);
+</script>
 </body>
 </html>
