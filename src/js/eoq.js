@@ -75,14 +75,19 @@ function calculateReorderPoint(dailyDemand, leadTimeDays, safetyStock = 0) {
 }
 
 /**
- * calculateSafetyStock — Buffer for demand and lead-time variability
+ * calculateSafetyStock — Heuristic buffer for demand and lead-time variability
  *
- * In empirical heuristics without full demand covariance matrices, safety stock
- * is dimensioned as a buffer covering a specified number of days of daily demand:
+ * Simple heuristic sizing a buffer to cover a specified number of days of daily demand:
  *   SS = ceil(dailyDemand × bufferDays)
  *
+ * LIMITATION & SCOPE BOUNDARY:
+ * This buffer-day calculation is a deterministic heuristic and does NOT provide or guarantee
+ * a specific statistical service level (e.g., 95% or 99% cycle service level). A valid service
+ * level guarantee requires an empirical demand distribution, lead-time distribution,
+ * variance estimation (z * sigma_L), and continuous convolution.
+ *
  * @param {number} dailyDemand - average units consumed per day
- * @param {number} bufferDays  - buffer days (e.g. 2 days for 95% nominal protection)
+ * @param {number} [bufferDays=0] - illustrative buffer days of demand
  * @returns {number} Safety stock in integer units
  */
 function calculateSafetyStock(dailyDemand, bufferDays = 0) {

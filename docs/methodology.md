@@ -73,16 +73,28 @@ Baseline ROP = ceil( Daily Demand × Lead Time )
 Effective Scenario ROP = ceil( Effective Demand × Effective Lead Time + Safety Stock )
 ```
 
-Baseline reorder points in `BASE_DATA` are dimensioned to cover at least the deterministic replenishment lead-time demand (`ROP >= ceil(d * L)`). Under scenario execution, `computeScenario` calculates the dynamic `effectiveReorderPoint`. This ensures that when demand spikes or transit delays occur, both the inventory status table and the "Below Reorder Point" KPI card evaluate the scenario-adjusted lead-time requirements rather than a frozen nominal baseline.
+### Synthetic Scenario Input Revisions & Comparative Baseline
 
-### Safety Stock Extension
+In the original synthetic demonstration inputs, four categories had reorder points set below deterministic lead-time demand:
+- IT Equipment: $10$ vs. $25.2$ units ($1.2 \times 21$)
+- Security Gear: $30$ vs. $39.2$ units ($2.8 \times 14$)
+- Communication Equip: $8$ vs. $11.2$ units ($0.4 \times 28$)
+- Vehicle Parts: $25$ vs. $37.8$ units ($2.1 \times 18$)
 
-In addition to deterministic lead-time coverage, `src/js/eoq.js` provides `calculateSafetyStock(dailyDemand, bufferDays)` to dimension safety buffer quantities covering empirical buffer days of demand:
+Under those original inputs, placing an order at the reorder point would guarantee a stockout before delivery even under nominal baseline demand. Baseline reorder points were revised in `BASE_DATA` to satisfy deterministic replenishment coverage ($\text{ROP} \ge \lceil d \times L \rceil$). The original demonstration values are preserved as `legacyReorderPoint` in the dataset for comparative auditing. This change represents an internal consistency revision to synthetic scenario inputs, **not** a measured operational improvement on live operations.
+
+Under scenario execution, `computeScenario` calculates the dynamic `effectiveReorderPoint`. This ensures that when demand surges or transit delays occur, both the inventory status table and the "Below Reorder Point" KPI card evaluate the scenario-adjusted lead-time requirements rather than a frozen nominal baseline.
+
+### Safety Stock & Service-Level Boundary
+
+In addition to deterministic lead-time coverage, `src/js/eoq.js` provides `calculateSafetyStock(dailyDemand, bufferDays)` to size an illustrative buffer covering a specified number of days of daily demand:
 
 ```
 ROP = ceil( Daily Demand × Lead Time + Safety Stock )
 Safety Stock = ceil( Daily Demand × Buffer Days )
 ```
+
+**Scope Boundary:** This buffer-day calculation is a deterministic heuristic. It does **not** provide, calculate, or guarantee a specific statistical service level (e.g. 95% or 99% cycle service level). Establishing a mathematically sound service-level guarantee requires an empirical demand distribution, lead-time variance distribution, and continuous convolution ($z \cdot \sigma_L$).
 
 ---
 
@@ -136,9 +148,12 @@ Effect on outputs:
 
 Note: lead time delay and demand spike compound. A 2× demand spike combined with +7 days lead time delay can push most categories to CRITICAL simultaneously — the "worst case" scenario for mission logistics planning.
 
-### 3. Supply Disruption Toggle
+### 3. Supply Disruption Toggle (Replenishment-Quantity Illustration)
 
-When activated, all `effectiveOrderQty` values are reduced by 40%, representing a partial vendor failure or transportation constraint. This does not directly affect stockout calculations (it models order fulfillment, not demand), but indicates that replenishment quantities will be smaller, requiring more frequent orders and increasing exposure to stockout risk between cycles.
+When activated, all `effectiveOrderQty` values are reduced by 40%, representing an illustrative partial vendor allocation or order cut.
+
+**Unmodeled Replenishment Dynamics Boundary:**
+This tool evaluates a **single-period static inventory snapshot**. Downstream replenishment shipment arrivals over time, order fulfillment pipelines, and subsequent multi-period inventory trajectories are unmodeled. Consequently, this control illustrates order batch-size reduction and does **not** alter stockout timing (`daysUntilStockout`) or status classifications (`CRITICAL`/`WARNING`/`OK`).
 
 ---
 
@@ -146,15 +161,26 @@ When activated, all `effectiveOrderQty` values are reduced by 40%, representing 
 
 The eight categories represent the major supply domains in a diplomatic mission:
 
-| Category | Domain | Key Characteristics |
-|---|---|---|
-| Office Supplies | Administrative | High volume, low cost, short lead time |
-| IT Equipment | Technology | Low volume, high cost, long lead time |
-| Security Gear | Security | Moderate volume and cost, medium lead time |
-| Medical Supplies | Medical/Welfare | Moderate volume, medium lead time, safety-critical |
-| Communication Equip | Operations | Very low volume, very high cost, very long lead time |
-| Vehicle Parts | Fleet | Moderate volume and cost, medium-long lead time |
-| Stationery/Forms | Administrative | Very high volume, very low cost, short lead time |
-| Facility Supplies | Maintenance | High volume, low-medium cost, short lead time |
+| Category | Domain | Revised ROP | Legacy ROP (Original Input) | Key Characteristics |
+|---|---|---|---|---|
+| Office Supplies | Administrative | 126 | 120 | High volume, low cost, short lead time |
+| IT Equipment | Technology | 26 | 10 | Low volume, high cost, long lead time |
+| Security Gear | Security | 40 | 30 | Moderate volume and cost, medium lead time |
+| Medical Supplies | Medical/Welfare | 75 | 75 | Moderate volume, medium lead time, safety-critical |
+| Communication Equip | Operations | 12 | 8 | Very low volume, very high cost, very long lead time |
+| Vehicle Parts | Fleet | 38 | 25 | Moderate volume and cost, medium-long lead time |
+| Stationery/Forms | Administrative | 200 | 200 | Very high volume, very low cost, short lead time |
+| Facility Supplies | Maintenance | 100 | 100 | High volume, low-medium cost, short lead time |
 
 The mix spans three cost tiers (low: <$50/unit, medium: $100–500, high: >$500) and three lead time tiers (short: ≤7 days, medium: 8–18 days, long: ≥21 days), creating a realistic spread of supply risk profiles.
+
+---
+
+## Retained Analytical Boundaries
+
+The following analytical boundaries are explicitly scoped and retained:
+
+1. **Unmodeled Replenishment Dynamics**: Replenishment arrivals and dynamic multi-period inventory trajectories are not simulated; disruption is an order-sizing demonstration.
+2. **Static Inventory-Position Assumptions**: Stock reflects current on-hand quantities without open order tracking, pipeline inventory, backorders, or multi-echelon network positions.
+3. **Deterministic Lead Times & Demand**: Lead times and demand rates are scalar constants without stochastic variance distributions.
+4. **Local Heuristics vs. Global Optimization**: Decentralized single-item Wilson EOQ / ROP without multi-echelon inventory optimization (MEIO) or mixed-integer linear programming (MILP).

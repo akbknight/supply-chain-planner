@@ -74,18 +74,51 @@ it('Maximum stress (3.0x demand, +14d transit delay): tracks multi-category fail
   assert(kpis.belowReorder >= 6, `Expected at least 6 items below reorder under max stress, got ${kpis.belowReorder}`);
 });
 
-// 5. Supply disruption cuts replenishment quantity by 40%
-it('Disruption toggle cuts replenishment batch sizes by 40%', () => {
+// 5. Supply disruption cuts replenishment quantity by 40% (illustration scope)
+it('Disruption toggle cuts replenishment batch sizes by 40% (illustration only)', () => {
   const normalRows = computeScenario(BASE_DATA, EOQ_VALUES, { disruption: false });
   const disruptRows = computeScenario(BASE_DATA, EOQ_VALUES, { disruption: true });
 
   normalRows.forEach((norm, i) => {
     const dis = disruptRows[i];
     assert.strictEqual(dis.effectiveOrderQty, Math.round(norm.orderQty * 0.6));
+    // Confirms scope boundary: disruption alters batch size, but does NOT alter static single-period stockout timing
+    assert.strictEqual(dis.daysUntilStockout, norm.daysUntilStockout);
+    assert.strictEqual(dis.statusKey, norm.statusKey);
+    assert.strictEqual(dis.effectiveReorderPoint, norm.effectiveReorderPoint);
   });
 });
 
-// 6. Mathematical invariant: All CRITICAL items are strictly below effective reorder point
+// 6. Preservation of legacy synthetic scenario inputs
+it('Synthetic scenario inputs: preserves legacyReorderPoint across all 8 items for comparative audit', () => {
+  const legacyMap = {
+    'Office Supplies': 120,
+    'IT Equipment': 10,
+    'Security Gear': 30,
+    'Medical Supplies': 75,
+    'Communication Equip': 8,
+    'Vehicle Parts': 25,
+    'Stationery/Forms': 200,
+    'Facility Supplies': 100
+  };
+
+  BASE_DATA.forEach(item => {
+    assert.strictEqual(
+      item.legacyReorderPoint,
+      legacyMap[item.name],
+      `Legacy synthetic ROP mismatch for ${item.name}`
+    );
+    // 4 categories were revised to meet deterministic lead-time demand
+    if (['Office Supplies', 'IT Equipment', 'Security Gear', 'Communication Equip', 'Vehicle Parts'].includes(item.name)) {
+      assert(
+        item.reorderPoint >= item.legacyReorderPoint,
+        `Expected revised ROP to be >= legacy ROP for ${item.name}`
+      );
+    }
+  });
+});
+
+// 7. Mathematical invariant: All CRITICAL items are strictly below effective reorder point
 it('Deterministic invariant: Every CRITICAL item is below effective reorder point', () => {
   const testCases = [
     { demandMult: 1.0, leadTimeExtra: 0 },

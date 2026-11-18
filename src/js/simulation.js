@@ -36,7 +36,11 @@ function computeScenario(baseData, eoqValues, params) {
     const effectiveDemand = item.dailyDemand * demandMult;
     const effectiveLeadTime = item.leadTimeDays + leadTimeExtra;
 
-    // 2. Disruption cuts available replenishment order quantities by 40%
+    // 2. Disruption cuts replenishment order quantities by 40% (illustration only)
+    // NOTE: This control illustrates supplier batch-size reduction. Because the tool evaluates
+    // a single-period static snapshot of current stock vs. demand rate, downstream replenishment
+    // shipment arrivals over time, lead-time pipeline inventory, and multi-period stock trajectories
+    // are unmodeled. Consequently, effectiveOrderQty does not alter daysUntilStockout or statusKey.
     const effectiveOrderQty = disruption
       ? Math.round(item.orderQty * 0.6)
       : item.orderQty;

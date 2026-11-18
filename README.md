@@ -32,7 +32,14 @@ Baseline Reorder Point = ceil( Daily Demand * Lead Time (days) )
 Effective Reorder Point = ceil( Effective Daily Demand * Effective Lead Time + Safety Stock )
 ```
 
-Baseline reorder points are dimensioned to cover at least the deterministic replenishment lead-time demand. Under scenario adjustments (demand surges and lead time delays), effective reorder points scale dynamically, ensuring that the "Below Reorder Point" KPI and status indicators remain mathematically consistent with projected stockout risks.
+**Revision of Synthetic Demonstration Inputs:**
+In the original synthetic scenario inputs, four categories had reorder points dimensioned below deterministic lead-time demand ($d \times L > R$: IT Equipment $25.2 > 10$, Security Gear $39.2 > 30$, Communication Equip $11.2 > 8$, Vehicle Parts $37.8 > 25$), guaranteeing stockout before replenishment arrival under nominal baseline conditions. Baseline reorder points were revised to satisfy deterministic replenishment lead-time demand ($R \ge \lceil d \times L \rceil$). The original demonstration values are preserved in the data and documentation (`legacyReorderPoint`) for comparative auditing. This change represents a revision to synthetic scenario inputs; it does **not** represent or imply a measured operational improvement on real-world systems.
+
+Under scenario adjustments (demand surges and lead time delays), effective reorder points scale dynamically, ensuring that the "Below Reorder Point" KPI card and status indicators remain mathematically consistent with projected stockout risks.
+
+### Safety Stock & Service-Level Boundary
+
+The safety stock buffer function (`calculateSafetyStock`) provides a simple deterministic heuristic (`dailyDemand * bufferDays`). It does **not** provide, calculate, or imply a statistical service-level guarantee (such as a 95% or 99% cycle service level). A mathematically sound service-level guarantee requires an empirical demand distribution, lead-time variance distribution, and continuous convolution ($z \cdot \sigma_L$).
 
 ### Days Until Stockout
 
@@ -70,24 +77,27 @@ Where:
 
 EOQ values are computed from base data and do not change with scenario adjustments, since they reflect structural cost parameters rather than short-term conditions.
 
-### Supply Disruption Scenario
+### Supply Disruption Scenario (Replenishment-Quantity Illustration)
 
-When the disruption toggle is active, all effective order quantities are reduced by 40%, representing a partial vendor failure or transportation constraint. This does not affect stockout calculations directly but indicates that replenishment quantities will be smaller than planned, increasing reorder frequency.
+When the disruption toggle is active, `effectiveOrderQty` is reduced by 40%, illustrating a partial vendor allocation constraint or supplier batch reduction.
+
+**Unmodeled Downstream Effects Boundary:**
+Because the planner models a **single-period static inventory snapshot**, downstream replenishment shipment arrivals over time, in-transit purchase order pipelines, and subsequent multi-period inventory trajectories are unmodeled. Consequently, the disruption control is an illustrative batch-size demonstration and does **not** alter stockout timing (`daysUntilStockout`) or status classifications (`CRITICAL`/`WARNING`/`OK`).
 
 ---
 
-## Supply Categories (Synthetic Data)
+## Supply Categories (Synthetic Scenario Data)
 
-| Category            | Stock | Reorder Point | Lead Time | Daily Demand | Unit Cost |
-|---------------------|-------|---------------|-----------|--------------|-----------|
-| Office Supplies     | 450   | 126           | 7 days    | 18 units     | $12       |
-| IT Equipment        | 28    | 26            | 21 days   | 1.2 units    | $850      |
-| Security Gear       | 95    | 40            | 14 days   | 2.8 units    | $220      |
-| Medical Supplies    | 210   | 75            | 10 days   | 6.5 units    | $45       |
-| Communication Equip | 15    | 12            | 28 days   | 0.4 units    | $1,200    |
-| Vehicle Parts       | 72    | 38            | 18 days   | 2.1 units    | $380      |
-| Stationery/Forms    | 890   | 200           | 5 days    | 32 units     | $3        |
-| Facility Supplies   | 340   | 100           | 8 days    | 11 units     | $28       |
+| Category            | Stock | Revised ROP | Legacy ROP (Original Input) | Lead Time | Daily Demand | Unit Cost |
+|---------------------|-------|-------------|-----------------------------|-----------|--------------|-----------|
+| Office Supplies     | 450   | 126         | 120                         | 7 days    | 18 units     | $12       |
+| IT Equipment        | 28    | 26          | 10                          | 21 days   | 1.2 units    | $850      |
+| Security Gear       | 95    | 40          | 30                          | 14 days   | 2.8 units    | $220      |
+| Medical Supplies    | 210   | 75          | 75                          | 10 days   | 6.5 units    | $45       |
+| Communication Equip | 15    | 12          | 8                           | 28 days   | 0.4 units    | $1,200    |
+| Vehicle Parts       | 72    | 38          | 25                          | 18 days   | 2.1 units    | $380      |
+| Stationery/Forms    | 890   | 200         | 200                         | 5 days    | 32 units     | $3        |
+| Facility Supplies   | 340   | 100         | 100                         | 8 days    | 11 units     | $28       |
 
 ---
 
@@ -147,6 +157,17 @@ npm run test:browser
 ## Design
 
 Dark dashboard aesthetic: background #0d0d0d, amber gold accent #E8A020, monospaced numerics for data density. Responsive layout supports desktop, tablet, and mobile viewports. All DOM manipulation is XSS-safe (no innerHTML with variable data).
+
+---
+
+## Retained Analytical Boundaries & Scoped Assumptions
+
+The following operational and mathematical boundaries are explicitly scoped and retained:
+
+1. **Unmodeled Replenishment Dynamics & Multi-Period Stock Trajectories**: The disruption toggle illustrates a 40% batch reduction on purchase order sizing. Because this simulation evaluates a single-period static snapshot of current on-hand stock against daily consumption rates, replenishment transit pipelines, order receipt arrivals over time, and subsequent post-arrival inventory trajectories are unmodeled.
+2. **Static Inventory-Position Assumptions**: Stock is modeled strictly as current on-hand quantity ($S$). The planner does not account for open purchase orders in transit, vendor backorders, safety stock allocations reserved for emergency tranches, or scrap/spoilage.
+3. **Deterministic Lead Times & Demand**: Daily demand and replenishment lead times are treated as deterministic scalar constants. The tool does not model stochastic lead-time distributions, demand variance, seasonal covariance matrices, or customs detention probability densities.
+4. **Decoupled Single-Item Heuristics vs. Global Optimization**: Order quantities (Wilson EOQ) and reorder triggers are computed via decentralized single-item formulas without multi-echelon inventory optimization (MEIO) or mixed-integer linear programming (MILP) under aggregate budgetary or cargo-volume constraints.
 
 ---
 
