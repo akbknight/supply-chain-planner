@@ -11,6 +11,9 @@
     rel="stylesheet"
   />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="src/js/config.js"></script>
+  <script src="src/js/eoq.js"></script>
+  <script src="src/js/simulation.js"></script>
   <style>
     /* ── Reset & Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -711,7 +714,7 @@
       <div class="kpi-card">
         <div class="kpi-label">Avg Lead Time</div>
         <div class="kpi-value" id="kpi-leadtime">--</div>
-        <div class="kpi-meta">Days (base, no delay)</div>
+        <div class="kpi-meta" id="kpi-leadtime-meta">Days (effective lead time)</div>
       </div>
     </div>
 
@@ -840,67 +843,16 @@
   (() => {
     'use strict';
 
-    /* ─── Base Data ─────────────────────────────────────────────────────── */
-    const BASE_DATA = [
-      { name: "Office Supplies",    stock: 450,  reorderPoint: 120,  leadTimeDays: 7,   dailyDemand: 18,   unitCost: 12,    orderQty: 300 },
-      { name: "IT Equipment",       stock: 28,   reorderPoint: 10,   leadTimeDays: 21,  dailyDemand: 1.2,  unitCost: 850,   orderQty: 20  },
-      { name: "Security Gear",      stock: 95,   reorderPoint: 30,   leadTimeDays: 14,  dailyDemand: 2.8,  unitCost: 220,   orderQty: 60  },
-      { name: "Medical Supplies",   stock: 210,  reorderPoint: 75,   leadTimeDays: 10,  dailyDemand: 6.5,  unitCost: 45,    orderQty: 150 },
-      { name: "Communication Equip",stock: 15,   reorderPoint: 8,    leadTimeDays: 28,  dailyDemand: 0.4,  unitCost: 1200,  orderQty: 12  },
-      { name: "Vehicle Parts",      stock: 72,   reorderPoint: 25,   leadTimeDays: 18,  dailyDemand: 2.1,  unitCost: 380,   orderQty: 50  },
-      { name: "Stationery/Forms",   stock: 890,  reorderPoint: 200,  leadTimeDays: 5,   dailyDemand: 32,   unitCost: 3,     orderQty: 600 },
-      { name: "Facility Supplies",  stock: 340,  reorderPoint: 100,  leadTimeDays: 8,   dailyDemand: 11,   unitCost: 28,    orderQty: 250 }
-    ];
-
-    const ORDERING_COST  = 50;    // $ per order (fixed)
-    const HOLDING_RATE   = 0.20;  // 20% of unit cost per year
-
-    /* ─── EOQ Computation ──────────────────────────────────────────────── */
-    function computeEOQ(item) {
-      const annualDemand  = item.dailyDemand * 365;
-      const holdingCost   = item.unitCost * HOLDING_RATE;
-      return Math.round(Math.sqrt((2 * annualDemand * ORDERING_COST) / holdingCost));
-    }
-
-    /* Pre-compute static EOQ values (do not change with scenario) */
-    const EOQ_VALUES = BASE_DATA.map(computeEOQ);
+    /* ─── Shared Module Binding ─────────────────────────────────────────── */
+    // BASE_DATA, ORDERING_COST, HOLDING_RATE provided by src/js/config.js
+    // calculateEOQFromItem provided by src/js/eoq.js
+    // computeScenario, computeKPIs provided by src/js/simulation.js
+    const EOQ_VALUES = BASE_DATA.map(item => calculateEOQFromItem(item, ORDERING_COST, HOLDING_RATE));
 
     /* ─── Scenario State ───────────────────────────────────────────────── */
     let demandMult    = 1.0;
     let leadTimeExtra = 0;
     let disruption    = false;
-
-    /* ─── Derived Computations ─────────────────────────────────────────── */
-    function computeScenario() {
-      return BASE_DATA.map((item, i) => {
-        const effectiveDemand   = item.dailyDemand * demandMult;
-        const effectiveLeadTime = item.leadTimeDays + leadTimeExtra;
-        const effectiveOrderQty = disruption ? Math.round(item.orderQty * 0.6) : item.orderQty;
-
-        const daysUntilStockout = effectiveDemand > 0
-          ? item.stock / effectiveDemand
-          : Infinity;
-
-        let statusKey;
-        if (daysUntilStockout < effectiveLeadTime) {
-          statusKey = 'CRITICAL';
-        } else if (daysUntilStockout < effectiveLeadTime * 1.5) {
-          statusKey = 'WARNING';
-        } else {
-          statusKey = 'OK';
-        }
-
-        return {
-          ...item,
-          effectiveDemand,
-          effectiveLeadTime,
-          effectiveOrderQty,
-          daysUntilStockout,
-          statusKey,
-          eoq: EOQ_VALUES[i]
-        };
-      });
-    }
 
     /* ─── Formatting Helpers ───────────────────────────────────────────── */
     function fmtDays(val) {
@@ -934,13 +886,11 @@
 
     /* ─── KPI Cards ────────────────────────────────────────────────────── */
     function updateKPIs(rows) {
-      const belowReorder   = rows.filter(r => r.stock < r.reorderPoint).length;
-      const totalValue     = BASE_DATA.reduce((sum, r) => sum + r.stock * r.unitCost, 0);
-      const avgLeadTime    = (BASE_DATA.reduce((s, r) => s + r.leadTimeDays, 0) / BASE_DATA.length).toFixed(1);
+      const kpis = computeKPIs(rows, BASE_DATA);
 
-      document.getElementById('kpi-below').textContent    = belowReorder;
-      document.getElementById('kpi-value').textContent    = fmtMoney(totalValue);
-      document.getElementById('kpi-leadtime').textContent = avgLeadTime;
+      document.getElementById('kpi-below').textContent    = kpis.belowReorder;
+      document.getElementById('kpi-value').textContent    = fmtMoney(kpis.totalValue);
+      document.getElementById('kpi-leadtime').textContent = kpis.avgLeadTime;
     }
 
     /* ─── Table ────────────────────────────────────────────────────────── */
@@ -958,10 +908,14 @@
         const numClass = row.statusKey === 'CRITICAL' ? 'num-crit'
                        : row.statusKey === 'WARNING'  ? 'num-warn'  : 'num-ok';
 
+        const reorderDisplay = row.effectiveReorderPoint !== undefined
+          ? row.effectiveReorderPoint.toLocaleString()
+          : row.reorderPoint.toLocaleString();
+
         const tr = el('tr', { className: rowClass },
           el('td', null, el('span', { className: 'cat-name' }, row.name)),
           el('td', null, row.stock.toLocaleString()),
-          el('td', null, row.reorderPoint.toLocaleString()),
+          el('td', null, reorderDisplay),
           el('td', { className: numClass }, fmtDays(row.daysUntilStockout)),
           el('td', null, row.effectiveLeadTime + ' days'),
           el('td', null, el('span', { className: 'status-badge ' + badgeClass }, row.statusKey)),
@@ -1043,9 +997,12 @@
         }
       }
     });
+    window.chart = stockChart;
+    window.stockChart = stockChart;
 
     function updateChart(rows) {
       stockChart.data.datasets[0].data = rows.map(r => r.stock);
+      stockChart.data.datasets[1].data = rows.map(r => r.effectiveReorderPoint !== undefined ? r.effectiveReorderPoint : r.reorderPoint);
 
       // Color bars by status
       stockChart.data.datasets[0].backgroundColor = rows.map(r =>
@@ -1080,7 +1037,7 @@
 
     /* ─── Full Render ──────────────────────────────────────────────────── */
     function render() {
-      const rows = computeScenario();
+      const rows = computeScenario(BASE_DATA, EOQ_VALUES, { demandMult, leadTimeExtra, disruption });
       updateKPIs(rows);
       updateTable(rows);
       updateChart(rows);

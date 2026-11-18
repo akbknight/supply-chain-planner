@@ -28,10 +28,11 @@ The simulation is intentionally simplified to demonstrate core supply chain conc
 A reorder is needed when inventory on hand falls to or below the quantity that will be consumed during the replenishment lead time:
 
 ```
-Reorder Point = Daily Demand * Lead Time (days)
+Baseline Reorder Point = ceil( Daily Demand * Lead Time (days) )
+Effective Reorder Point = ceil( Effective Daily Demand * Effective Lead Time + Safety Stock )
 ```
 
-The embedded reorder points in the data reflect this baseline without safety stock.
+Baseline reorder points are dimensioned to cover at least the deterministic replenishment lead-time demand. Under scenario adjustments (demand surges and lead time delays), effective reorder points scale dynamically, ensuring that the "Below Reorder Point" KPI and status indicators remain mathematically consistent with projected stockout risks.
 
 ### Days Until Stockout
 
@@ -79,12 +80,12 @@ When the disruption toggle is active, all effective order quantities are reduced
 
 | Category            | Stock | Reorder Point | Lead Time | Daily Demand | Unit Cost |
 |---------------------|-------|---------------|-----------|--------------|-----------|
-| Office Supplies     | 450   | 120           | 7 days    | 18 units     | $12       |
-| IT Equipment        | 28    | 10            | 21 days   | 1.2 units    | $850      |
-| Security Gear       | 95    | 30            | 14 days   | 2.8 units    | $220      |
+| Office Supplies     | 450   | 126           | 7 days    | 18 units     | $12       |
+| IT Equipment        | 28    | 26            | 21 days   | 1.2 units    | $850      |
+| Security Gear       | 95    | 40            | 14 days   | 2.8 units    | $220      |
 | Medical Supplies    | 210   | 75            | 10 days   | 6.5 units    | $45       |
-| Communication Equip | 15    | 8             | 28 days   | 0.4 units    | $1,200    |
-| Vehicle Parts       | 72    | 25            | 18 days   | 2.1 units    | $380      |
+| Communication Equip | 15    | 12            | 28 days   | 0.4 units    | $1,200    |
+| Vehicle Parts       | 72    | 38            | 18 days   | 2.1 units    | $380      |
 | Stationery/Forms    | 890   | 200           | 5 days    | 32 units     | $3        |
 | Facility Supplies   | 340   | 100           | 8 days    | 11 units     | $28       |
 
@@ -112,6 +113,25 @@ No build step or server required.
 3. Interact with the scenario controls to explore different supply chain conditions
 
 The project is also deployable directly to GitHub Pages by enabling Pages on the repository root.
+
+---
+
+## Verification & Automated Testing
+
+The project includes automated test coverage across unit calculations, scenario simulations, browser DOM parity, and headless Chrome browser execution:
+
+```bash
+# Run unit tests, scenario simulations, and HTML module parity checks
+npm test
+
+# Run headless Google Chrome browser smoke test with visual screenshot capture
+npm run test:browser
+```
+
+- **`tests/test_eoq.cjs`**: Verifies analytical Wilson formula derivations, zero/negative parameter guards, exact integer outputs across all 8 base categories, safety stock buffers, and stockout risk thresholds.
+- **`tests/test_simulation.cjs`**: Verifies deterministic lead-time coverage invariants ($R \ge \lceil d \times L \rceil$), demand surge and transit delay scaling, supply disruption order quantity cuts (40%), and dynamic KPI consistency.
+- **`tests/test_browser_parity.cjs`**: Verifies `index.html` loads shared modular scripts (`config.js`, `eoq.js`, `simulation.js`), asserts absence of duplicate inline definitions, and checks presence of all interactive DOM controls.
+- **`tests/test_browser_smoke.cjs`**: Launches headless Google Chrome via Puppeteer Core, loads `index.html`, asserts 0 page/console errors, exercises demand surge and transit delay sliders, toggles supply disruption and themes, and verifies reactive DOM re-rendering.
 
 ---
 

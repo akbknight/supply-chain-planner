@@ -69,21 +69,20 @@ EOQ values are computed once from base data and do not change with scenario para
 The reorder point is the stock level at which a new order must be placed to avoid a stockout during the replenishment lead time:
 
 ```
-ROP = Daily Demand × Lead Time (days)
+Baseline ROP = ceil( Daily Demand × Lead Time )
+Effective Scenario ROP = ceil( Effective Demand × Effective Lead Time + Safety Stock )
 ```
 
-The values in BASE_DATA `reorderPoint` field are set to match this formula at baseline demand (no safety stock). This represents a lean policy — the mission assumes it can reliably receive orders within the stated lead time.
+Baseline reorder points in `BASE_DATA` are dimensioned to cover at least the deterministic replenishment lead-time demand (`ROP >= ceil(d * L)`). Under scenario execution, `computeScenario` calculates the dynamic `effectiveReorderPoint`. This ensures that when demand spikes or transit delays occur, both the inventory status table and the "Below Reorder Point" KPI card evaluate the scenario-adjusted lead-time requirements rather than a frozen nominal baseline.
 
-### Safety Stock Extension (not implemented)
+### Safety Stock Extension
 
-In a more conservative model, safety stock (SS) would be added:
+In addition to deterministic lead-time coverage, `src/js/eoq.js` provides `calculateSafetyStock(dailyDemand, bufferDays)` to dimension safety buffer quantities covering empirical buffer days of demand:
 
 ```
-ROP = Daily Demand × Lead Time + Safety Stock
-Safety Stock = z * σ_demand * sqrt(Lead Time)
+ROP = ceil( Daily Demand × Lead Time + Safety Stock )
+Safety Stock = ceil( Daily Demand × Buffer Days )
 ```
-
-where z is the service level factor (e.g., z=1.65 for 95% service level) and σ_demand is the standard deviation of daily demand. This is documented in Silver, Pyke & Peterson (1998) and is the natural next step for this model.
 
 ---
 

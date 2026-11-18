@@ -57,19 +57,37 @@ function calculateEOQFromItem(item, orderingCost, holdingRate) {
 }
 
 /**
- * calculateReorderPoint — Demand-based reorder trigger
+ * calculateReorderPoint — Demand-based reorder trigger with optional safety stock
  *
- * ROP = average daily demand × lead time
+ * ROP = ceil(dailyDemand × leadTimeDays + safetyStock)
  *
- * Interpretation: if stock falls to this level, place an order now and
- * inventory will reach zero just as the replenishment arrives (no safety stock).
+ * Interpretation: if stock falls to this level, place an order now so that
+ * replenishment arrives before safety buffer is breached.
  *
  * @param {number} dailyDemand   - average units consumed per day
  * @param {number} leadTimeDays  - days from order placement to receipt
+ * @param {number} [safetyStock=0] - buffer units held to mitigate variability
  * @returns {number} Reorder point (units)
  */
-function calculateReorderPoint(dailyDemand, leadTimeDays) {
-  return dailyDemand * leadTimeDays;
+function calculateReorderPoint(dailyDemand, leadTimeDays, safetyStock = 0) {
+  if (dailyDemand <= 0 || leadTimeDays <= 0) return Math.ceil(Math.max(0, safetyStock));
+  return Math.ceil(dailyDemand * leadTimeDays + Math.max(0, safetyStock));
+}
+
+/**
+ * calculateSafetyStock — Buffer for demand and lead-time variability
+ *
+ * In empirical heuristics without full demand covariance matrices, safety stock
+ * is dimensioned as a buffer covering a specified number of days of daily demand:
+ *   SS = ceil(dailyDemand × bufferDays)
+ *
+ * @param {number} dailyDemand - average units consumed per day
+ * @param {number} bufferDays  - buffer days (e.g. 2 days for 95% nominal protection)
+ * @returns {number} Safety stock in integer units
+ */
+function calculateSafetyStock(dailyDemand, bufferDays = 0) {
+  if (dailyDemand <= 0 || bufferDays <= 0) return 0;
+  return Math.ceil(dailyDemand * bufferDays);
 }
 
 /**
@@ -113,12 +131,23 @@ function calculateStockoutRisk(daysUntilStockout, effectiveLeadTime) {
   return 'OK';
 }
 
+// Browser window global exposure
+if (typeof window !== 'undefined') {
+  window.calculateEOQ = calculateEOQ;
+  window.calculateEOQFromItem = calculateEOQFromItem;
+  window.calculateReorderPoint = calculateReorderPoint;
+  window.calculateSafetyStock = calculateSafetyStock;
+  window.calculateDaysUntilStockout = calculateDaysUntilStockout;
+  window.calculateStockoutRisk = calculateStockoutRisk;
+}
+
 // CommonJS export for test harness
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     calculateEOQ,
     calculateEOQFromItem,
     calculateReorderPoint,
+    calculateSafetyStock,
     calculateDaysUntilStockout,
     calculateStockoutRisk,
   };

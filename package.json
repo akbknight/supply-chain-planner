@@ -1,0 +1,18 @@
+{
+  "name": "supply-chain-planner",
+  "version": "1.0.0",
+  "description": "Diplomatic Mission Supply Chain & Scenario Planner",
+  "scripts": {
+    "test": "node tests/test_eoq.cjs && node tests/test_simulation.cjs && node tests/test_browser_parity.cjs",
+    "test:browser": "node tests/test_browser_smoke.cjs"
+  },
+  "keywords": [
+    "supply-chain",
+    "eoq",
+    "inventory",
+    "scenario-planning",
+    "logistics"
+  ],
+  "author": "Akshay Kumar",
+  "license": "MIT"
+}
